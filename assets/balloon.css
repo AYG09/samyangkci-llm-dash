@@ -1,0 +1,17 @@
+/* 풍선 애니메이션 CSS (Dash용) */
+.balloon-anim {
+  position: fixed;
+  bottom: 60px;
+  width: 22px;
+  height: 28px;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  opacity: 0.85;
+  z-index: 9999;
+  animation: balloon-float 1.6s cubic-bezier(.4,0,.2,1) forwards;
+  pointer-events: none;
+}
+@keyframes balloon-float {
+  0% { transform: translateY(0) scale(1); opacity: 0.9; }
+  60% { opacity: 1; }
+  100% { transform: translateY(-180px) scale(1.15); opacity: 0; }
+}

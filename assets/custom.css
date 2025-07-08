@@ -1,0 +1,163 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+body, html {
+    font-family: 'Pretendard', 'Noto Sans KR', 'Malgun Gothic', sans-serif !important;
+    background: #f7f8fa;
+    color: #222;
+}
+
+/* 메인 헤더 */
+.dash-h2, h2, .main-title {
+    font-weight: 900;
+    color: #24278B;
+    letter-spacing: -1px;
+    margin-bottom: 0.5em;
+}
+
+/* 탭 스타일 */
+.dash-tabs, .nav-tabs {
+    background: #f3f4fa;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 4px 24px rgba(36,39,139,0.08);
+    padding: 0 12px;
+}
+.dash-tabs .nav-link, .nav-tabs .nav-link {
+    font-weight: 700;
+    font-size: 1.08rem;
+    color: #24278B;
+    border-radius: 12px 12px 0 0;
+    margin-right: 4px;
+    background: none;
+    transition: background 0.2s;
+}
+.dash-tabs .nav-link.active, .nav-tabs .nav-link.active {
+    background: linear-gradient(90deg, #24278B 70%, #3a3e9e 100%);
+    color: #fff !important;
+    box-shadow: 0 2px 12px rgba(36,39,139,0.10);
+}
+
+/* 카드/섹션 */
+.card, .dash-card, .section {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(36,39,139,0.10);
+    padding: 32px 28px 28px 28px;
+    margin-bottom: 32px;
+}
+
+/* 버튼 */
+.btn, button, .dash-button {
+    border-radius: 18px !important;
+    font-weight: 900;
+    font-size: 1.15rem;
+    letter-spacing: -0.5px;
+    box-shadow: 0 6px 24px rgba(36,39,139,0.12);
+    background: linear-gradient(90deg, #24278B 70%, #3a3e9e 100%);
+    color: #fff !important;
+    border: none;
+    transition: all 0.2s cubic-bezier(.4,0,.2,1);
+}
+.btn:hover, button:hover, .dash-button:hover {
+    background: linear-gradient(90deg, #1a1d5c 70%, #24278B 100%);
+    color: #fff !important;
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 12px 32px rgba(36,39,139,0.18);
+}
+
+/* 입력창 */
+textarea, input[type="text"], .dash-input {
+    border-radius: 12px;
+    border: 1.5px solid #e0e3f3;
+    background: #f8f9fa;
+    font-size: 1.08rem;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    box-shadow: none;
+    transition: border 0.2s;
+}
+textarea:focus, input[type="text"]:focus {
+    border: 1.5px solid #24278B;
+    outline: none;
+}
+
+/* 경고/알림 */
+.alert, .dash-alert {
+    border-radius: 12px;
+    font-size: 1.02rem;
+    font-weight: 600;
+    box-shadow: 0 2px 12px rgba(36,39,139,0.08);
+}
+
+/* 사이드바(예시) */
+.sidebar {
+    background: linear-gradient(135deg, #24278B 80%, #3a3e9e 100%);
+    color: #fff;
+    border-radius: 24px;
+    box-shadow: 0 8px 32px rgba(36,39,139,0.12);
+    padding: 32px 24px 24px 24px;
+    margin-right: 32px;
+    min-width: 240px;
+}
+
+/* 드롭다운 고도화 */
+.Select-control, .dash-dropdown, select, .Select {
+    border-radius: 12px !important;
+    border: 1.5px solid #e0e3f3 !important;
+    background: #f8f9fa !important;
+    font-size: 1.08rem !important;
+    font-weight: 600;
+    color: #1A237E !important;
+    box-shadow: none !important;
+    padding: 12px 16px !important;
+    transition: border 0.2s;
+}
+.Select-control:focus, .dash-dropdown:focus, select:focus {
+    border: 1.5px solid #24278B !important;
+    outline: none !important;
+}
+
+/* 체크박스 고도화 */
+input[type="checkbox"] {
+    accent-color: #24278B;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 1.5px solid #e0e3f3;
+    background: #f8f9fa;
+    margin-right: 8px;
+    vertical-align: middle;
+    transition: box-shadow 0.2s;
+}
+input[type="checkbox"]:focus {
+    box-shadow: 0 0 0 2px #bfc6f7;
+}
+
+/* 정보/버전 카드 고도화 */
+.info-card, .version-card {
+    background: #f7f8fa;
+    border: 1.5px solid #e0e3f3;
+    border-radius: 18px;
+    box-shadow: 0 2px 12px rgba(36,39,139,0.08);
+    padding: 24px 20px 18px 20px;
+    margin: 18px 0 24px 0;
+    color: #1A237E;
+    font-size: 1.08rem;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: -0.5px;
+}
+.info-card .emoji, .version-card .emoji {
+    font-size: 1.3rem;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+/* 기타 */
+::-webkit-scrollbar {
+    width: 8px;
+    background: #f3f4fa;
+}
+::-webkit-scrollbar-thumb {
+    background: #dbe0f5;
+    border-radius: 8px;
+}
