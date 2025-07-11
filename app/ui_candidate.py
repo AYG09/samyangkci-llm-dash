@@ -16,7 +16,9 @@ def register_candidate_callbacks(app: Dash):
             Output('candidate-delete-btn', 'disabled'),
             Output('candidate-compare-btn', 'disabled'),
             Output('candidate-download-btn', 'disabled'),
-            Output('candidate-json-export-btn', 'disabled')
+            Output('candidate-json-export-btn', 'disabled'),
+            Output('candidate-pdf-btn', 'disabled'),
+            Output('candidate-ppt-btn', 'disabled')
         ],
         [Input('candidate-table', 'selected_rows'), Input('candidate-table', 'data')]
     )
@@ -32,7 +34,9 @@ def register_candidate_callbacks(app: Dash):
         download_disabled = not has_data
         # JSON 내보내기: 1명만 선택 시 활성화
         json_export_disabled = not (len(selected) == 1 and has_data)
-        return delete_disabled, compare_disabled, download_disabled, json_export_disabled
+        # PDF/PPT 출력: 1명만 선택 시 활성화
+        pdf_ppt_disabled = not (len(selected) == 1 and has_data)
+        return delete_disabled, compare_disabled, download_disabled, json_export_disabled, pdf_ppt_disabled, pdf_ppt_disabled
 
     @app.callback(
         [Output('candidate-table', 'data'),
@@ -40,10 +44,13 @@ def register_candidate_callbacks(app: Dash):
          Output('candidate-table', 'selected_row_ids'),
          Output('candidate-action-msg', 'children'),
          Output('candidate-table', 'page_current')],
-        [Input('candidate-delete-btn', 'n_clicks'), Input('candidate-download-btn', 'n_clicks')],
+        [Input('candidate-delete-btn', 'n_clicks'), 
+         Input('candidate-download-btn', 'n_clicks'),
+         Input('candidate-pdf-btn', 'n_clicks'), 
+         Input('candidate-ppt-btn', 'n_clicks')],
         [State('candidate-table', 'data'), State('candidate-table', 'selected_rows'), State('candidate-table', 'selected_row_ids')]
     )
-    def candidate_action_callback(delete_clicks, download_clicks, data, selected_rows, selected_row_ids):
+    def candidate_action_callback(delete_clicks, download_clicks, pdf_clicks, ppt_clicks, data, selected_rows, selected_row_ids):
         from app.db import delete_candidate, load_candidates
         ctx = dash.callback_context
         if not ctx.triggered:
@@ -112,6 +119,63 @@ def register_candidate_callbacks(app: Dash):
             href = f"data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}"
             link = html.A("엑셀 다운로드(여기 클릭)", href=href, download="candidates.xlsx", target="_blank", style={"color": "#0984e3", "fontWeight": 600})
             return dash.no_update, [], [], link, dash.no_update
+        
+        # PDF 출력 버튼 클릭
+        elif btn_id == 'candidate-pdf-btn':
+            if not pdf_clicks:
+                raise dash.exceptions.PreventUpdate
+            if not data or not selected_rows or len(selected_rows) != 1:
+                msg = html.Span("PDF 출력을 위해 후보자를 1명만 선택하세요.", style={"color": "#d63031", "fontWeight": 600})
+                return dash.no_update, [], [], msg, dash.no_update
+            
+            idx = selected_rows[0]
+            candidate = data[idx]
+            
+            from app.utils import try_parse_json
+            result_raw = candidate.get('analysis_result', '{}')
+            json_data = try_parse_json(result_raw)
+            
+            if json_data is None:
+                msg = html.Span("선택된 후보자의 분석 데이터가 올바르지 않습니다.", style={"color": "#d63031", "fontWeight": 600})
+                return dash.no_update, [], [], msg, dash.no_update
+            
+            msg = html.Div([
+                html.P("PDF 출력 기능이 준비되었습니다.", style={"color": "#28a745", "fontWeight": 600}),
+                html.P("아래 링크를 클릭하여 각 보고서를 새 창에서 열고 브라우저의 인쇄 기능을 사용하세요:"),
+                html.A("📄 종합대시보드 PDF", href=f"/print-report/{candidate['id']}/comprehensive", target="_blank", style={"marginRight": "10px", "color": "#007bff"}),
+                html.A("📊 임원용 보고서 PDF", href=f"/print-report/{candidate['id']}/executive", target="_blank", style={"marginRight": "10px", "color": "#007bff"}),
+                html.A("👥 HR 보고서 PDF", href=f"/print-report/{candidate['id']}/hr", target="_blank", style={"color": "#007bff"})
+            ])
+            return dash.no_update, [], [], msg, dash.no_update
+            
+        # PPT 출력 버튼 클릭
+        elif btn_id == 'candidate-ppt-btn':
+            if not ppt_clicks:
+                raise dash.exceptions.PreventUpdate
+            if not data or not selected_rows or len(selected_rows) != 1:
+                msg = html.Span("PPT 출력을 위해 후보자를 1명만 선택하세요.", style={"color": "#d63031", "fontWeight": 600})
+                return dash.no_update, [], [], msg, dash.no_update
+            
+            idx = selected_rows[0]
+            candidate = data[idx]
+            
+            from app.utils import try_parse_json
+            result_raw = candidate.get('analysis_result', '{}')
+            json_data = try_parse_json(result_raw)
+            
+            if json_data is None:
+                msg = html.Span("선택된 후보자의 분석 데이터가 올바르지 않습니다.", style={"color": "#d63031", "fontWeight": 600})
+                return dash.no_update, [], [], msg, dash.no_update
+            
+            msg = html.Div([
+                html.P("PPT 출력 기능이 준비되었습니다.", style={"color": "#28a745", "fontWeight": 600}),
+                html.P("아래 링크를 클릭하여 각 보고서를 새 창에서 열고 브라우저의 인쇄 기능을 사용하세요:"),
+                html.A("📄 종합대시보드 PPT", href=f"/print-report/{candidate['id']}/comprehensive", target="_blank", style={"marginRight": "10px", "color": "#28a745"}),
+                html.A("📊 임원용 보고서 PPT", href=f"/print-report/{candidate['id']}/executive", target="_blank", style={"marginRight": "10px", "color": "#28a745"}),
+                html.A("👥 HR 보고서 PPT", href=f"/print-report/{candidate['id']}/hr", target="_blank", style={"color": "#28a745"})
+            ])
+            return dash.no_update, [], [], msg, dash.no_update
+        
         raise dash.exceptions.PreventUpdate
 
     @app.callback(
@@ -221,6 +285,8 @@ def register_candidate_callbacks(app: Dash):
         filename = f"{candidate.get('name', 'candidate')}_분석결과_{today}.json"
         href = f"data:application/json;base64,{b64}"
         return html.A("JSON 다운로드(여기 클릭)", href=href, download=filename, target="_blank", style={"color": "#0984e3", "fontWeight": 600})
+
+
 # 복사본: render_candidate_management_tab 함수
 
 
@@ -273,6 +339,8 @@ def render_candidate_management_tab():
             html.Button("선택 비교", id="candidate-compare-btn", className="btn btn-info", style={"marginRight": "8px"}, disabled=True),
             html.Button("전체 다운로드 (Excel)", id="candidate-download-btn", className="btn btn-secondary", style={"marginRight": "8px"}, disabled=False),
             html.Button("선택 내보내기 (JSON)", id="candidate-json-export-btn", className="btn btn-primary", style={"marginRight": "8px"}, disabled=True),
+            html.Button("PDF 출력", id="candidate-pdf-btn", className="btn btn-warning", style={"marginRight": "8px"}, disabled=True),
+            html.Button("PPT 출력", id="candidate-ppt-btn", className="btn btn-success", style={"marginRight": "8px"}, disabled=True),
             html.Div(id="candidate-json-export-link", style={"display": "inline-block", "marginLeft": "10px"}),
         ], style={"marginBottom": "12px"}),
         html.Div(id="candidate-action-msg", style={"marginBottom": "12px", "fontWeight": "600", "minHeight": "24px"}),

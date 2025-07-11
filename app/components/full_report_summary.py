@@ -1,59 +1,72 @@
 from dash import html, dcc
-import dash_bootstrap_components as dbc
+import dash_bootstrap_components as dbc  # type: ignore
 import plotly.graph_objects as go
-from typing import List
-from ..report_schema import ComprehensiveReport, AnalysisItem
-from collections import defaultdict
+from app.report_schema import ComprehensiveReport
 
-def create_full_report_summary(report: ComprehensiveReport, items: List[AnalysisItem]) -> html.Div:
-    """
-    종합 분석 및 레이더 차트 섹션을 생성합니다.
-    """
+
+def create_comprehensive_score_donut(score: float) -> dcc.Graph:
+    """종합 점수 도넛 차트를 생성합니다."""
+    # 점수에 따른 색상 결정
+    if score >= 80:
+        color = '#28a745'  # 초록색
+    elif score >= 60:
+        color = '#ffc107'  # 노란색  
+    else:
+        color = '#dc3545'  # 빨간색
     
-    # 1. 레이더 차트 데이터 계산
-    category_scores = defaultdict(list)
-    for item in items:
-        category_scores[item.category].append(item.score)
+    fig = go.Figure(data=[go.Pie(
+        labels=['점수', ''],
+        values=[score, 100-score],
+        hole=0.6,
+        marker=dict(colors=[color, '#e9ecef']),
+        textinfo='none',
+        hoverinfo='none',
+        showlegend=False
+    )])
     
-    avg_scores = {
-        cat: round(sum(scores) / len(scores), 2) if scores else 0
-        for cat, scores in category_scores.items()
-    }
-    
-    # 카테고리 순서 정의 (원하는 순서대로)
-    categories = ['EXPERTISE', 'CAREER', 'COMMUNICATION', 'PERSONALITY']
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatterpolar(
-        r=[avg_scores.get(cat, 0) for cat in categories],
-        theta=categories,
-        fill='toself',
-        name='역량'
-    ))
+    fig.add_annotation(
+        text=f"{score:.0f}",
+        x=0.5, y=0.5,
+        font_size=36,
+        showarrow=False
+    )
     
     fig.update_layout(
-        polar=dict(
-            radialaxis=dict(visible=True, range=[0, 5]),
-            angularaxis=dict(tickfont=dict(size=14))
-        ),
-        showlegend=False,
-        height=400,
-        margin=dict(l=60, r=60, t=40, b=40)
+        height=200,
+        margin=dict(l=0, r=0, t=0, b=0),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)'
     )
+    
+    return dcc.Graph(figure=fig, config={'displayModeBar': False})
 
-    # 2. 종합 평가 텍스트 컴포넌트 생성
-    summary_text_component = html.Div([
-        dbc.Badge(report.recommendation, color="primary", className="me-2"),
-        html.H4("종합 평가", className="d-inline"),
-        html.P(report.summary, className="mt-3"),
-        html.Hr(),
-        html.H5(f"종합 평점: {report.score} / 5.0", className="text-end")
+
+def create_full_report_summary(report: ComprehensiveReport) -> html.Div:
+    """
+    '종합 평가 및 핵심 요약' 섹션을 생성합니다.
+    (Executive Summary 텍스트 + 종합 평가 점수 도넛 차트)
+    """
+
+    # Executive Summary 텍스트 부분
+    summary_content = html.Div([
+        html.H4("Executive Summary", className="summary-title"),
+        html.P(report.summary, className="summary-paragraph"),
     ])
 
+    # 종합 평가 점수 차트
+    donut_chart = create_comprehensive_score_donut(report.score)
+
     return html.Div(
-        dbc.Row([
-            dbc.Col(summary_text_component, md=6),
-            dbc.Col(dcc.Graph(figure=fig), md=6),
-        ]),
-        className="report-summary-section p-4 mb-4",
+        [
+            html.H2("I. 종합 평가 및 핵심 요약", className="report-main-section-title"),
+            dbc.Row(
+                [
+                    dbc.Col(summary_content, md=7),
+                    dbc.Col(donut_chart, md=5),
+                ],
+                align="center",
+                className="g-0",
+            ),
+        ],
+        className="report-section-container",
     )

@@ -13,7 +13,7 @@ def AnalysisItemCard(item):
         ]),
         dbc.CardBody([
             html.P(f"점수: {item.get('score', 'N/A')} / 신뢰도: {item.get('reliability', 'N/A')}"),
-            dcc.Markdown(item.get('analysis', '')),
+            html.Div(item.get('analysis', ''), style={'whiteSpace': 'pre-line'}),
             html.Small(f"자료근거: {item.get('evidence', '')}")
         ])
     ], className="mb-3")

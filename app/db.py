@@ -5,7 +5,12 @@ from typing import Any, Dict, Optional
 import json
 import os
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "candidates.db")
+
+DB_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "candidates.db"
+)
+
 
 def get_db_connection() -> sqlite3.Connection:
     """데이터베이스 커넥션을 반환합니다."""
@@ -81,3 +86,60 @@ def load_candidate_json(candidate_id: str) -> Optional[Dict[str, Any]]:
         return json.loads(row[0])
     except Exception:
         return None
+
+def get_candidate_by_id(candidate_id: str) -> Optional[Dict[str, Any]]:
+    """특정 후보자의 모든 정보를 dict로 반환."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM candidate_analysis WHERE id = ?", (candidate_id,))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return None
+    
+    # 컬럼명과 값을 매핑
+    columns = ['id', 'name', 'evaluator', 'interview_date', 'json_data']
+    return dict(zip(columns, row))
+
+def load_candidate_raw_llm_text(candidate_id: str) -> Optional[str]:
+    """특정 후보자의 LLM 결과 원문(evaluator 컬럼)을 반환."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT evaluator FROM candidate_analysis WHERE id = ?", (candidate_id,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return row[0]
+    return None
+
+def save_llm_analysis_result(
+    name: str,
+    organization: str,
+    position: str,
+    interview_date: str,
+    raw_llm_text: str
+) -> None:
+    """
+    LLM 분석 탭에서 파싱 및 수정된 후보자 정보를 저장합니다.
+    organization과 position은 json_data에 저장합니다.
+    """
+    conn = get_db_connection()
+    c = conn.cursor()
+    
+    # id는 name과 date를 조합하여 생성 (동명이인 구분)
+    candidate_id = f"{name}_{interview_date}" 
+    
+    # 추가 정보를 JSON으로 묶음
+    json_data = json.dumps({
+        "organization": organization,
+        "position": position
+    }, ensure_ascii=False)
+
+    # 기존 스키마에 맞게 데이터 저장
+    # evaluator 필드에 raw_llm_text를 임시 저장
+    c.execute(
+        "INSERT OR REPLACE INTO candidate_analysis (id, name, evaluator, interview_date, json_data) VALUES (?, ?, ?, ?, ?)",
+        (candidate_id, name, raw_llm_text, interview_date, json_data)
+    )
+    conn.commit()
+    conn.close()
