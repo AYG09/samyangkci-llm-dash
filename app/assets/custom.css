@@ -1,0 +1,49 @@
+/* HR 보고서 프로필 탭을 위한 스타일 */
+.hr-profile-tab-container {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.hr-profile-button {
+    padding: 0.5rem 1rem;
+    border-radius: 1rem;
+    font-size: 0.9rem;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+    background-color: #f1f3f5; /* 기본 배경색 */
+    color: #495057; /* 기본 글자색 */
+}
+
+/* 각 버튼의 기본 색상 테마 */
+.hr-profile-button.personal { background-color: #e0f2fe; color: #0277bd; border-color: #b3e5fc; }
+.hr-profile-button.career { background-color: #e8f5e8; color: #2e7d32; border-color: #c8e6c9; }
+.hr-profile-button.personality { background-color: #fce4ec; color: #c2185b; border-color: #f8bbd0; }
+.hr-profile-button.expertise { background-color: #fff3e0; color: #ef6c00; border-color: #ffe0b2; }
+.hr-profile-button.weaknesses { background-color: #ffebee; color: #d32f2f; border-color: #ffcdd2; }
+
+/* 활성화된 버튼 스타일 */
+.hr-profile-button.active {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-weight: 700;
+}
+
+/* 컨텐츠 영역 스타일 */
+.hr-profile-content {
+    display: block;
+    animation: fadeIn 0.5s;
+}
+
+.hr-profile-content.hidden {
+    display: none;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

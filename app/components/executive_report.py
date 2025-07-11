@@ -1,25 +1,53 @@
 from dash import html
-from .executive_graphs import executive_summary_gauge, executive_risk_bar
+import dash_bootstrap_components as dbc
+from ..report_schema import ReportData
+from .executive_graphs import create_executive_summary_charts
 
-def render_executive_report(candidate):
-    # candidate: dict 또는 pandas.Series
-    score = candidate.get('overall_score', 4.3)
-    risk = candidate.get('risk_score', 3.5)
-    summary = candidate.get('executive_summary', '핵심 인사이트 요약이 없습니다.')
-    # NoneType 안전 처리
-    if score is None:
-        score = 0
-    if risk is None:
-        risk = 0
-    return html.Div([
-        html.H4('임원용 핵심 INSIGHT', style={"fontWeight":700, "marginBottom":"18px"}),
-        html.Div([
-            executive_summary_gauge(score/5 if score is not None else 0),
-            executive_risk_bar(risk),
-        ], style={"display":"flex", "gap":"32px", "marginBottom":"18px"}),
-        html.Div([
-            html.H5('핵심 요약', style={"fontWeight":600, "marginBottom":"8px"}),
-            html.P(summary, style={"fontSize":"1.08rem", "color":"#222"})
-        ], style={"marginBottom":"18px"}),
-        # 추가 인사이트/표/리스트 등 필요시 확장
-    ], style={"background":"#fff", "borderRadius":"14px", "boxShadow":"0 2px 12px #005BAC11", "padding":"32px 28px 24px 28px", "marginTop":"18px"})
+def render_executive_report(report_data: ReportData) -> html.Div:
+    """
+    경영진 보고서 UI를 생성합니다.
+    """
+    if not isinstance(report_data, ReportData):
+        return html.Div("보고서 데이터가 올바른 형식이 아닙니다.", className="report-container")
+
+    insights = report_data.executive_insights
+    info = report_data.candidate_info
+    
+    # 주요 Insight를 카드로 표시
+    insight_cards = []
+    for insight in insights:
+        card = dbc.Card(
+            dbc.CardBody([
+                html.H5(insight.title, className="card-title"),
+                html.P(insight.analysis, className="card-text"),
+                html.Small(f"근거: {insight.evidence}", className="text-muted"),
+            ]),
+            className="mb-3",
+        )
+        insight_cards.append(card)
+
+    return html.Div(
+        [
+            # 보고서 헤더
+            html.Div([
+                html.H1("Executive Briefing: Candidate Assessment"),
+                html.H2(f"{info.name} - {info.position}"),
+                html.Hr(),
+            ], className="report-header-executive mb-4"),
+            
+            dbc.Row([
+                # 좌측: 종합 차트
+                dbc.Col(
+                    create_executive_summary_charts(
+                        report_data.comprehensive_report,
+                        report_data.analysis_items
+                    ), 
+                    md=5
+                ),
+                # 우측: 주요 Insight
+                dbc.Col(insight_cards, md=7),
+            ]),
+        ],
+        className="report-container-executive p-4",
+        style={"backgroundColor": "#fff", "fontFamily": "'Pretendard', sans-serif"}
+    )

@@ -1,5 +1,6 @@
-from dash import html, dcc, Output, Input, State
+from dash import html, dcc
 import dash_bootstrap_components as dbc
+from .config import MATERIAL_LABELS
 
 def render_dash_prompt_generator():
     return html.Div([
@@ -10,15 +11,10 @@ def render_dash_prompt_generator():
             html.Div([
                 dbc.Row([
                     dbc.Col([
-                        dbc.Checkbox(id=f'prompt-upload-materials-{i}', value=False, style={"marginRight": "8px"}),
+                        dbc.Checkbox(id={'type': 'prompt-upload-material', 'index': i}, value=False, style={"marginRight": "8px"}),
                         html.Span(label, style={"fontWeight": 500, "fontSize": "1.04rem", "wordBreak": "keep-all", "whiteSpace": "pre-line"})
                     ], width=3, style={"display": "flex", "alignItems": "center", "gap": "6px", "marginBottom": "10px"})
-                    for i, label in enumerate([
-                        "이력서",
-                        "면접평가표(1차)", "면접평가표(2차)", "면접평가표(3차)",
-                        "면접 녹취록(1차)", "면접 녹취록(2차)", "면접 녹취록(3차)",
-                        "포트폴리오", "평판보고서", "BIG5 성격유형검사표", "인성검사표"
-                    ])
+                    for i, label in enumerate(MATERIAL_LABELS)
                 ], justify="start", style={"flexWrap": "wrap", "rowGap": "0", "marginBottom": "0"})
             ], style={"width": "100%", "margin": "0 auto", "display": "flex", "flexWrap": "wrap"}),
             html.Div([
