@@ -31,10 +31,20 @@ def parse_row(row):
     try:
         raw_llm_text = row['evaluator']
         if raw_llm_text and raw_llm_text.strip():
-            report_data = parse_llm_report(raw_llm_text)
-            if report_data.comprehensive_report:
-                row['overall_score'] = report_data.comprehensive_report.score
-                row['recommendation'] = report_data.comprehensive_report.recommendation
+            parsed_result = parse_llm_report(raw_llm_text)
+            # 파싱 결과가 ReportData 객체인지 확인
+            if hasattr(parsed_result, 'comprehensive_report') and parsed_result.comprehensive_report:
+                row['overall_score'] = parsed_result.comprehensive_report.score
+                row['recommendation'] = parsed_result.comprehensive_report.recommendation
+            elif isinstance(parsed_result, dict):
+                # Dict 형태로 반환된 경우
+                comp_report = parsed_result.get('comprehensive_report', {})
+                if comp_report:
+                    row['overall_score'] = comp_report.get('score', 0)
+                    row['recommendation'] = comp_report.get('recommendation', 'N/A')
+                else:
+                    row['overall_score'] = 0
+                    row['recommendation'] = 'N/A'
             else:
                 row['overall_score'] = 0
                 row['recommendation'] = 'N/A'
@@ -107,12 +117,19 @@ def register_report_callbacks(app):
         [
             Input("candidate-table", "selected_rows"),
             Input("report-type-dropdown", "value"),
-            Input("candidate-table", "data"),  # 테이블 데이터가 변경될 때도 반응
         ],
+        State("candidate-table", "data"),  # State로 변경하여 직접적인 트리거 방지
         prevent_initial_call=True,
     )
     def update_report_display(selected_rows, report_type, table_data):
         """선택된 후보자와 보고서 유형에 따라 보고서 내용을 표시합니다."""
+        ctx = dash.callback_context
+        # 콜백이 트리거된 이유가 selected_rows나 report_type 변경이 아니면 업데이트 방지
+        triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        if triggered_id not in ["candidate-table", "report-type-dropdown"]:
+            raise dash.exceptions.PreventUpdate
+
+        # 안전한 에러 핸들링으로 탭 리셋 방지
         try:
             if not selected_rows or not table_data:
                 return html.Div(
@@ -133,23 +150,41 @@ def register_report_callbacks(app):
             if not selected_candidate_id:
                 return dbc.Alert("선택된 후보자의 ID를 찾을 수 없습니다.", color="warning")
 
-            # 보고서 생성 시도
-            report_content = update_report_content(selected_candidate_id, report_type)
-            
-            # 보고서 생성 성공 시 반환
-            return report_content
+            # 보고서 생성 시도 - 안전한 방식으로
+            try:
+                report_content = update_report_content(selected_candidate_id, report_type)
+                
+                # 보고서 생성 성공 시 반환
+                if report_content is not None:
+                    return report_content
+                else:
+                    return dbc.Alert(
+                        "보고서 생성이 완료되지 않았습니다. 잠시 후 다시 시도해주세요.",
+                        color="info",
+                        className="mt-4"
+                    )
+                    
+            except Exception as report_error:
+                # 보고서 생성 관련 에러만 처리
+                print(f"Report generation error: {str(report_error)}")
+                return dbc.Alert([
+                    html.H5("보고서 생성 오류", className="alert-heading"),
+                    html.P("선택한 후보자의 보고서를 생성하는 중 문제가 발생했습니다."),
+                    html.P("다른 보고서 유형을 선택하거나 후보자를 다시 선택해주세요."),
+                    html.Hr(),
+                    html.Small(f"오류 세부사항: {str(report_error)}", className="text-muted")
+                ], color="warning", className="mt-4")
             
         except Exception as e:
-            # 모든 예외를 캐치하여 탭 전환 방지
-            error_message = f"보고서 표시 중 오류가 발생했습니다: {str(e)}"
-            print(f"Report display error: {error_message}")  # 디버깅용 로그
+            # 최상위 예외 처리 - 절대 실패하지 않도록
+            print(f"Critical error in update_report_display: {str(e)}")
             
             return dbc.Alert([
-                html.H5("보고서 표시 오류", className="alert-heading"),
-                html.P("보고서를 표시하는 중 문제가 발생했습니다."),
-                html.P("다른 보고서 유형을 선택하거나 페이지를 새로고침해주세요."),
+                html.H5("시스템 오류", className="alert-heading"),
+                html.P("시스템에서 예기치 않은 오류가 발생했습니다."),
+                html.P("페이지를 새로고침하거나 관리자에게 문의하세요."),
                 html.Hr(),
-                html.Small(error_message, className="text-muted")
+                html.Small(f"오류 ID: {str(e)[:100]}", className="text-muted")
             ], color="danger", className="mt-4")
 
     @app.callback(

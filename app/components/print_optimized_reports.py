@@ -54,9 +54,12 @@ def create_print_header(candidate_name: str, report_type: str) -> html.Div:
     """인쇄용 헤더 생성"""
     return html.Div([
         html.Div([
-            html.H1(f"{report_type}", style=A4_STYLES['title']),
+            html.H1(report_type, style=A4_STYLES['title']),
             html.H2(f"후보자: {candidate_name}", style=A4_STYLES['subtitle']),
-            html.P(f"삼양KCI 면접 분석 시스템", style={'fontSize': '10pt', 'color': '#999'})
+            html.P(
+                "삼양KCI 면접 분석 시스템",
+                style={'fontSize': '10pt', 'color': '#999'}
+            )
         ], style=A4_STYLES['header'])
     ])
 
@@ -66,22 +69,25 @@ def create_print_executive_summary(report_data: ReportData) -> html.Div:
     if not report_data.comprehensive_report:
         return html.Div("종합 평가 데이터가 없습니다.")
     
-    # 6대 역량 그룹별 평균 점수 계산
+    # 5대 차원별 평균 점수 계산
     df = pd.DataFrame([{
         'category': item.category,
         'score': item.score,
         'title': item.title
     } for item in report_data.analysis_items])
     
-    category_scores = df.groupby('category')['score'].mean().reset_index()
-    category_names = {
-        'CAREER': '경력/전문성',
-        'COMPETENCY': '핵심역량',
-        'SIMULATION': '직무테스트',
-        'MOTIVATION': '동기/성격',
-        'POTENTIAL': '성장잠재력',
-        'FIT': '조직적합성'
+    # 5대 차원만 필터링
+    dimension_names = {
+        'CAPABILITY': '역량',
+        'PERFORMANCE': '성과',
+        'POTENTIAL': '잠재력',
+        'PERSONALITY': '개인특성',
+        'FIT': '적합성'
     }
+    
+    df = df[df['category'].isin(dimension_names.keys())]
+    category_scores = df.groupby('category')['score'].mean().reset_index()
+    category_names = dimension_names
     
     category_scores['category_kr'] = category_scores['category'].map(
         lambda x: category_names.get(x, x)
@@ -160,12 +166,26 @@ def create_print_executive_summary(report_data: ReportData) -> html.Div:
                         )
                     ], style={'width': '30%', 'verticalAlign': 'top', 'padding': '5mm'}),
                     html.Td([
-                        html.H3("후보자 정보", style={'margin': '0', 'fontSize': '12pt'}),
-                        html.P(f"지원직급: {report_data.candidate_info.position}", style={'margin': '2mm 0', 'fontSize': '10pt'}),
-                        html.P(f"지원조직: {report_data.candidate_info.organization}", style={'margin': '2mm 0', 'fontSize': '10pt'})
-                    ], style={'width': '30%', 'verticalAlign': 'top', 'padding': '5mm'})
+                        html.H3(
+                            "후보자 정보",
+                            style={'margin': '0', 'fontSize': '12pt'}
+                        ),
+                        html.P(
+                            f"지원직급: {report_data.candidate_info.position}",
+                            style={'margin': '2mm 0', 'fontSize': '10pt'}
+                        ),
+                        html.P(
+                            f"지원조직: {report_data.candidate_info.organization}",
+                            style={'margin': '2mm 0', 'fontSize': '10pt'}
+                        )
+                    ], style={
+                        'width': '30%', 'verticalAlign': 'top', 'padding': '5mm'
+                    })
                 ])
-            ], style={'width': '100%', 'border': '2px solid #1A237E', 'marginBottom': '8mm'}),
+            ], style={
+                'width': '100%', 'border': '2px solid #1A237E',
+                'marginBottom': '8mm'
+            }),
             
             # 종합 의견
             html.Div([
@@ -184,13 +204,28 @@ def create_print_executive_summary(report_data: ReportData) -> html.Div:
             html.Table([
                 html.Thead([
                     html.Tr([
-                        html.Th("역량 그룹", style={'padding': '3mm', 'backgroundColor': '#f8f9fa', 'fontSize': '10pt'}),
-                        html.Th("세부 역량", style={'padding': '3mm', 'backgroundColor': '#f8f9fa', 'fontSize': '10pt'}),
-                        html.Th("점수", style={'padding': '3mm', 'backgroundColor': '#f8f9fa', 'fontSize': '10pt', 'textAlign': 'center'})
+                        html.Th(
+                            "역량 그룹",
+                            style={'padding': '3mm', 'backgroundColor': '#f8f9fa',
+                                   'fontSize': '10pt'}
+                        ),
+                        html.Th(
+                            "세부 역량",
+                            style={'padding': '3mm', 'backgroundColor': '#f8f9fa',
+                                   'fontSize': '10pt'}
+                        ),
+                        html.Th(
+                            "점수",
+                            style={'padding': '3mm', 'backgroundColor': '#f8f9fa',
+                                   'fontSize': '10pt', 'textAlign': 'center'}
+                        )
                     ])
                 ]),
                 html.Tbody(table_body_rows)
-            ], style={'width': '100%', 'border': '1px solid #dee2e6', 'borderCollapse': 'collapse'})
+            ], style={
+                'width': '100%', 'border': '1px solid #dee2e6',
+                'borderCollapse': 'collapse'
+            })
         ], style=A4_STYLES['page'])
     ])
 
@@ -206,60 +241,107 @@ def create_print_comprehensive_report(report_data: ReportData) -> html.Div:
                 html.H4("후보자 기본 정보", style={'fontSize': '12pt', 'marginBottom': '3mm'}),
                 html.Table([
                     html.Tr([
-                        html.Td("이름", style={'padding': '2mm', 'fontWeight': 'bold', 'backgroundColor': '#f8f9fa', 'width': '20%'}),
-                        html.Td(report_data.candidate_info.name, style={'padding': '2mm'})
+                        html.Td(
+                            "이름",
+                            style={'padding': '2mm', 'fontWeight': 'bold',
+                                   'backgroundColor': '#f8f9fa', 'width': '20%'}
+                        ),
+                        html.Td(
+                            report_data.candidate_info.name,
+                            style={'padding': '2mm'}
+                        )
                     ]),
                     html.Tr([
-                        html.Td("지원직급", style={'padding': '2mm', 'fontWeight': 'bold', 'backgroundColor': '#f8f9fa'}),
-                        html.Td(report_data.candidate_info.position, style={'padding': '2mm'})
+                        html.Td(
+                            "지원직급",
+                            style={'padding': '2mm', 'fontWeight': 'bold',
+                                   'backgroundColor': '#f8f9fa'}
+                        ),
+                        html.Td(
+                            report_data.candidate_info.position,
+                            style={'padding': '2mm'}
+                        )
                     ]),
                     html.Tr([
-                        html.Td("지원조직", style={'padding': '2mm', 'fontWeight': 'bold', 'backgroundColor': '#f8f9fa'}),
-                        html.Td(report_data.candidate_info.organization, style={'padding': '2mm'})
+                        html.Td(
+                            "지원조직",
+                            style={'padding': '2mm', 'fontWeight': 'bold',
+                                   'backgroundColor': '#f8f9fa'}
+                        ),
+                        html.Td(
+                            report_data.candidate_info.organization,
+                            style={'padding': '2mm'}
+                        )
                     ])
-                ], style={'width': '100%', 'border': '1px solid #dee2e6', 'marginBottom': '5mm'})
+                ], style={
+                    'width': '100%', 'border': '1px solid #dee2e6',
+                    'marginBottom': '5mm'
+                })
             ], style=A4_STYLES['section']),
             
             # 종합 평가 요약
             html.Div([
-                html.H4("종합 평가 요약", style={'fontSize': '12pt', 'marginBottom': '3mm'}),
+                html.H4("종합 평가 요약", style={'fontSize': '12pt',
+                                            'marginBottom': '3mm'}),
                 html.P(
-                    report_data.comprehensive_report.summary if report_data.comprehensive_report else "종합 평가 데이터가 없습니다.",
-                    style={'fontSize': '10pt', 'lineHeight': '1.4', 'textAlign': 'justify'}
+                    report_data.comprehensive_report.summary
+                    if report_data.comprehensive_report
+                    else "종합 평가 데이터가 없습니다.",
+                    style={'fontSize': '10pt', 'lineHeight': '1.4',
+                           'textAlign': 'justify'}
                 )
             ], style=A4_STYLES['section'])
         ], style=A4_STYLES['page']),
         
         # 페이지 2: 주요 분석 항목
         html.Div([
-            create_print_header(report_data.candidate_info.name, "주요 분석 항목"),
-            
-            html.Div([
-                html.Ol([
-                    html.Li([
-                        html.Strong(f"{item.title}: "),
-                        html.Span(item.analysis),
-                        html.Br(),
-                        html.Small(f"점수: {item.score:.1f}/100", style={'color': '#666'})
-                    ], style={'marginBottom': '3mm', 'fontSize': '10pt'})
-                    for item in report_data.analysis_items[:10]  # 상위 10개만
-                ])
-            ])
+            create_print_header(
+                report_data.candidate_info.name, "핵심 의사결정 포인트"
+            ),
+            html.H4(
+                "👍 강점 및 기회 요인",
+                style={'fontSize': '12pt', 'color': '#007bff',
+                       'marginBottom': '3mm'}
+            ),
+            html.Ul([
+                html.Li([
+                    html.Strong(f"{item.title}: "),
+                    html.Span(item.analysis)
+                ], style={'marginBottom': '3mm', 'fontSize': '10pt'})
+                for item in report_data.decision_points.strengths
+            ]),
+            html.Hr(style={'margin': '8mm 0'}),
+            html.H4(
+                "⚠️ 리스크 및 우려 사항",
+                style={'fontSize': '12pt', 'color': '#dc3545',
+                       'marginBottom': '3mm'}
+            ),
+            html.Ul([
+                html.Li([
+                    html.Strong(f"{item.title}: "),
+                    html.Span(item.analysis)
+                ], style={'marginBottom': '3mm', 'fontSize': '10pt'})
+                for item in report_data.decision_points.risks
+            ]),
         ], style=A4_STYLES['page']),
-        
-        # 페이지 3: 임원용 인사이트
+
+        # 페이지 3: 세부 역량 분석
         html.Div([
-            create_print_header(report_data.candidate_info.name, "임원용 인사이트"),
-            
+            create_print_header(
+                report_data.candidate_info.name, "세부 역량 분석"
+            ),
             html.Div([
                 html.Ol([
                     html.Li([
                         html.Strong(f"{item.title}: "),
                         html.Span(item.analysis),
                         html.Br(),
-                        html.Small(f"근거: {item.evidence}", style={'color': '#666'})
+                        html.Small(
+                            f"점수: {item.score:.1f}/100",
+                            style={'color': '#666'}
+                        )
                     ], style={'marginBottom': '3mm', 'fontSize': '10pt'})
-                    for item in report_data.executive_insights[:10]  # 상위 10개만
+                    for item in report_data.analysis_items[:10]
                 ])
             ])
         ], style=A4_STYLES['page'])
@@ -270,54 +352,61 @@ def create_print_hr_report(report_data: ReportData) -> html.Div:
     """인쇄용 HR 보고서"""
     return html.Div([
         create_print_header(report_data.candidate_info.name, "HR 상세 분석 보고서"),
-        
-        # 페이지 1: HR 핵심 포인트
+
+        # 페이지 1: HR 핵심 의사결정 포인트
         html.Div([
-            html.Div([
-                html.H4("HR 핵심 검토 사항", style={'fontSize': '12pt', 'marginBottom': '3mm'}),
-                html.Ol([
-                    html.Li([
-                        html.Strong(f"{item.title}: "),
-                        html.Span(item.analysis),
-                        html.Br(),
-                        html.Small(f"근거: {item.evidence}", style={'color': '#666'})
-                    ], style={'marginBottom': '5mm', 'fontSize': '10pt'})
-                    for item in report_data.hr_points[:8]  # 상위 8개만
-                ])
+            html.H4(
+                "👍 강점 및 기회 요인",
+                style={'fontSize': '12pt', 'color': '#007bff',
+                       'marginBottom': '3mm'}
+            ),
+            html.Ul([
+                html.Li([
+                    html.Strong(f"{item.title}: "),
+                    html.Span(item.analysis),
+                    html.Br(),
+                    html.Small(f"근거: {item.evidence}", style={'color': '#666'})
+                ], style={'marginBottom': '5mm', 'fontSize': '10pt'})
+                for item in report_data.decision_points.strengths
+            ]),
+            html.Hr(style={'margin': '8mm 0'}),
+            html.H4(
+                "⚠️ 리스크 및 우려 사항",
+                style={'fontSize': '12pt', 'color': '#dc3545',
+                       'marginBottom': '3mm'}
+            ),
+            html.Ul([
+                html.Li([
+                    html.Strong(f"{item.title}: "),
+                    html.Span(item.analysis),
+                    html.Br(),
+                    html.Small(f"근거: {item.evidence}", style={'color': '#666'})
+                ], style={'marginBottom': '5mm', 'fontSize': '10pt'})
+                for item in report_data.decision_points.risks
             ])
         ], style=A4_STYLES['page']),
-        
-        # 페이지 2: 임원 인사이트
-        html.Div([
-            create_print_header(report_data.candidate_info.name, "임원 의사결정 포인트"),
-            
-            html.Div([
-                html.H4("Executive Insights", style={'fontSize': '12pt', 'marginBottom': '3mm'}),
-                html.Ol([
-                    html.Li([
-                        html.Strong(f"{item.title}: "),
-                        html.Span(item.analysis),
-                        html.Br(),
-                        html.Small(f"근거: {item.evidence}", style={'color': '#666'})
-                    ], style={'marginBottom': '5mm', 'fontSize': '10pt'})
-                    for item in report_data.executive_insights[:8]  # 상위 8개만
-                ])
-            ])
-        ], style=A4_STYLES['page']),
-        
-        # 페이지 3: 자료별 분석
+
+        # 페이지 2: 자료별 분석
         html.Div([
             create_print_header(report_data.candidate_info.name, "자료별 분석 요약"),
             
             html.Div([
                 html.Div([
-                    html.H5(f"📄 {item.material_name}", style={'fontSize': '11pt', 'marginBottom': '2mm'}),
-                    html.P(item.summary, style={'fontSize': '10pt', 'marginBottom': '3mm', 'textAlign': 'justify'}),
+                    html.H5(
+                        f"📄 {item.material_name}",
+                        style={'fontSize': '11pt', 'marginBottom': '2mm'}
+                    ),
+                    html.P(
+                        item.summary,
+                        style={'fontSize': '10pt', 'marginBottom': '3mm',
+                               'textAlign': 'justify'}
+                    ),
                     html.P([
                         html.Strong("분석 포인트: "),
                         html.Span(item.analysis_points)
-                    ], style={'fontSize': '9pt', 'marginBottom': '5mm', 'color': '#666'})
-                ]) for item in report_data.material_analysis[:6]  # 상위 6개만
+                    ], style={'fontSize': '9pt', 'marginBottom': '5mm',
+                              'color': '#666'})
+                ]) for item in report_data.material_analysis[:6]
             ])
         ], style=A4_STYLES['page'])
     ])
@@ -347,8 +436,11 @@ def render_print_optimized_report(report_data: ReportData, report_type: str) -> 
                 html.Strong("📄 인쇄 방법: "),
                 html.Span("Ctrl+P를 누르거나 브라우저 메뉴에서 인쇄를 선택하세요"),
                 html.Br(),
-                html.A("← 뒤로가기", href="/", 
-                       style={'marginLeft': '10px', 'color': '#007bff', 'textDecoration': 'none'})
+                html.A(
+                    "← 뒤로가기", href="/",
+                    style={'marginLeft': '10px', 'color': '#007bff',
+                           'textDecoration': 'none'}
+                )
             ], style={
                 'position': 'fixed',
                 'top': '10px',

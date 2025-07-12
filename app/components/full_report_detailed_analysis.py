@@ -13,10 +13,6 @@ def create_detailed_analysis_section(items: List[AnalysisItem]) -> html.Div:
 
     analysis_item_components: List[html.Div] = []
     for i, item in enumerate(items):
-        # 'SIMULATION' 카테고리는 최종 보고서에 표시하지 않음
-        if item.category == 'SIMULATION':
-            continue
-
         item_component = html.Div(
             [
                 html.H5(f"{i+1}. {item.title}", className="item-title-simple"),
@@ -37,7 +33,7 @@ def create_detailed_analysis_section(items: List[AnalysisItem]) -> html.Div:
 
     return html.Div(
         [
-            html.H2("세부 역량 분석", className="section-title"),
+            html.H2("IV. 세부 역량 분석", className="section-title"),
             html.Div(analysis_item_components),
         ],
         className="light-section-container",

@@ -29,6 +29,7 @@ app = dash.Dash(
             "https://fonts.googleapis.com/css2?"
             "family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
         ),
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css",
     ],
     suppress_callback_exceptions=True,
 )

@@ -10,83 +10,66 @@ from .full_report_summary import create_full_report_summary
 from .full_report_by_material import create_full_report_by_material
 from .radar_chart import create_radar_chart
 from .full_report_detailed_analysis import create_detailed_analysis_section
+from .decision_points_section import create_decision_points_section
 
 
 def create_comprehensive_visual_report(report_data: ReportData) -> html.Div:
     """
-    HR + 임원 통합 종합 인터랙티브 비주얼 리포트를 생성합니다.
-    
-    구조:
-    1. 핵심 지표 카드 (At a Glance)
-    2. Executive Summary 탭 (임원용 요약)
-    3. HR Deep Dive 탭 (HR 전문 분석)
+    종합 비주얼 리포트 전체 레이아웃을 생성합니다.
     """
+    if not report_data:
+        return html.Div("보고서 데이터가 없습니다.", className="p-4")
+
+    # 각 섹션 생성
+    header_section = create_full_report_header(report_data.candidate_info)
+    summary_section = create_full_report_summary(
+        report_data.comprehensive_report
+    )
+    by_material_section = create_full_report_by_material(
+        report_data.material_analysis
+    )
     
-    # 추천 등급별 스타일 맵
-    status_map = {
-        '강력 추천': {'color': 'success', 'icon': 'fa-solid fa-rocket'},
-        '추천': {'color': 'primary', 'icon': 'fa-solid fa-thumbs-up'},
-        '고려': {'color': 'warning', 'icon': 'fa-solid fa-magnifying-glass'},
-        '보류': {'color': 'secondary', 'icon': 'fa-solid fa-pause-circle'},
-        '비추천': {'color': 'danger', 'icon': 'fa-solid fa-ban'}
-    }
-    
-    # 역량 카테고리별 색상 맵
-    color_map = {
-        'CAREER': '#1f77b4', 'COMPETENCY': '#ff7f0e', 'SIMULATION': '#2ca02c',
-        'MOTIVATION': '#d62728', 'POTENTIAL': '#9467bd', 'FIT': '#8c564b'
-    }
-    
-    # 1. 핵심 지표 카드 생성
-    key_metrics_card = _create_key_metrics_card(report_data, status_map)
-    
-    # 2. Executive Summary 탭 콘텐츠 생성
-    executive_tab_content = _create_executive_tab_content(report_data, color_map)
-    
-    # 3. HR Deep Dive 탭 콘텐츠 생성
-    hr_tab_content = _create_hr_tab_content(report_data, color_map)
-    
-    return html.Div([
-        # 헤더
-        dbc.Row(
-            dbc.Col(
-                html.Div([
-                    html.H2("종합 후보자 분석 대시보드", className="text-white mb-2"),
-                    html.P("AI 기반 통합 인터랙티브 비주얼 리포트 (임원 & HR)", className="text-white-50 mb-0")
-                ]),
-                style={'backgroundColor': '#0055A4', 'padding': '2rem', 'borderRadius': '8px'}
-            ),
-            className="mb-4"
-        ),
-        
-        # 핵심 지표 카드
-        dbc.Row(
-            dbc.Col(key_metrics_card, width=12, className="mb-4")
-        ),
-        
-        # 메인 탭 영역
-        dbc.Row(
-            dbc.Col(
-                dbc.Tabs(
-                    id="comprehensive-report-tabs",
-                    active_tab="tab-executive",
-                    children=[
-                        dbc.Tab(
-                            label="📊 Executive Summary", 
-                            tab_id="tab-executive", 
-                            children=html.Div(executive_tab_content, className="py-4")
-                        ),
-                        dbc.Tab(
-                            label="🔍 HR Deep Dive", 
-                            tab_id="tab-hr", 
-                            children=html.Div(hr_tab_content, className="py-4")
-                        ),
-                    ]
-                ),
-                width=12
-            )
-        )
-    ], className="comprehensive-visual-report")
+    # 핵심 의사결정 포인트(강점/리스크) 섹션 생성
+    decision_points = create_decision_points_section(
+        report_data.decision_points
+    )
+    radar_chart_section = create_radar_chart(
+        report_data.analysis_items, context="comprehensive"
+    )
+    detailed_analysis_section = create_detailed_analysis_section(
+        report_data.analysis_items
+    )
+
+    return html.Div(
+        [
+            # 보고서 최상단 헤더
+            html.Div([
+                html.H1(f"{report_data.candidate_info.name} 후보자 종합 분석 보고서"),
+                html.P(
+                    f"지원: {report_data.candidate_info.organization} / "
+                    f"{report_data.candidate_info.position}",
+                    className="lead"
+                )
+            ], className="report-main-header"),
+
+            # 1. 종합 평가 요약
+            header_section,
+            summary_section,
+            
+            # 2. 자료별 분석 요약
+            by_material_section,
+
+            # 3. 핵심 의사결정 포인트 (강점/리스크)
+            decision_points,
+
+            # 4. 역량 프로필 (Radar Chart)
+            radar_chart_section,
+            
+            # 5. 세부 역량 분석
+            detailed_analysis_section,
+        ],
+        className="comprehensive-report-container p-4 p-md-5"
+    )
 
 
 def _create_key_metrics_card(report_data: ReportData, status_map: Dict[str, Dict[str, str]]) -> dbc.Card:
@@ -120,7 +103,7 @@ def _create_key_metrics_card(report_data: ReportData, status_map: Dict[str, Dict
                 highlight_color = "success"
     else:
         # 위험 요인 찾기 - executive_insights에서 위험 관련 항목 또는 점수가 낮은 항목
-        risk_items = [item for item in report_data.executive_insights if "리스크" in item.title or "위험" in item.title]
+        risk_items = [item for item in report_data.executive_insights if "리스크" in item.insight or "위험" in item.insight]
         
         if risk_items:
             highlight_title = f"🚨 핵심 위험: {risk_items[0].title}"
@@ -190,19 +173,21 @@ def _create_executive_tab_content(report_data: ReportData, color_map: Dict[str, 
             'title': item.title
         } for item in report_data.analysis_items])
         
-        # 카테고리 이름 한글화
-        category_names = {
-            'CAREER': '경력/전문성',
-            'COMPETENCY': '핵심역량',
-            'SIMULATION': '직무테스트',
-            'MOTIVATION': '동기/성격',
-            'POTENTIAL': '성장잠재력',
-            'FIT': '조직적합성'
+        # 5개 차원 한국어 매핑
+        dimension_names = {
+            'CAPABILITY': '역량',
+            'PERFORMANCE': '성과',
+            'POTENTIAL': '잠재력',
+            'PERSONALITY': '개인특성',
+            'FIT': '적합성'
         }
+        
+        # 5개 차원만 필터링
+        df = df[df['category'].isin(dimension_names.keys())]
         
         # 세부 항목별 점수 표 생성
         detail_table_rows = []
-        df['category_kr'] = df['category'].map(lambda x: category_names.get(x, x))
+        df['category_kr'] = df['category'].map(lambda x: dimension_names.get(x, x))
         
         # 카테고리별 평균 점수 계산해서 정렬
         category_order = df.groupby('category_kr')['score'].mean().sort_values(ascending=False).index
@@ -231,7 +216,7 @@ def _create_executive_tab_content(report_data: ReportData, color_map: Dict[str, 
         
         # 표만 표시 (차트 제거)
         competency_content = html.Div([
-            html.H5("6대 역량 그룹별 세부 점수", className="mb-3"),
+            html.H5("5대 차원별 세부 점수", className="mb-3"),
             dbc.Table([
                 html.Thead([
                     html.Tr([
@@ -247,7 +232,7 @@ def _create_executive_tab_content(report_data: ReportData, color_map: Dict[str, 
     else:
         competency_content = html.Div("분석 항목 데이터가 없습니다.", className="text-center text-muted")
     
-    # 2. Executive & HR Insights 리스트
+    # 2. Executive & HR Insights 리스트 (중복 제거)
     insights_items = []
     
     if report_data.executive_insights:

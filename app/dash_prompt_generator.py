@@ -96,6 +96,7 @@ def render_dash_prompt_generator():
                 className="text-danger ms-2 fw-bold"
             )
         ]),
+
         dcc.Textarea(
             id='prompt-generated-prompt-area',
             readOnly=True,

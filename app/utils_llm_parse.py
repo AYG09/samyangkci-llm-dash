@@ -1,6 +1,10 @@
 import json
 import re
 from typing import Dict, Any, List, TypedDict, cast
+import logging
+
+# 로깅 설정
+logger = logging.getLogger(__name__)
 
 
 class CandidateInfo(TypedDict, total=False):
@@ -239,3 +243,237 @@ def extract_candidate_info_from_text(text: str) -> Dict[str, str]:
             break
             
     return info
+
+
+def remove_citation_markers(text: str) -> str:
+    """
+    텍스트에서 인용 마커를 제거합니다.
+    
+    Args:
+        text (str): 원본 텍스트
+        
+    Returns:
+        str: 인용 마커가 제거된 텍스트
+    """
+    if not text:
+        return text
+    
+    # 인용 마커 패턴들을 정의
+    citation_patterns = [
+        r'\[cite_start\]',
+        r'\[cite_end\]',
+        r'\[cite:\s*\d+(?:,\s*\d+)*\]',
+        r'\[ref:\s*\d+(?:,\s*\d+)*\]',
+        r'\[source:\s*\d+(?:,\s*\d+)*\]',
+        r'\[evidence:\s*\d+(?:,\s*\d+)*\]',
+    ]
+    
+    # 각 패턴을 순차적으로 제거
+    cleaned_text = text
+    for pattern in citation_patterns:
+        cleaned_text = re.sub(pattern, '', cleaned_text, flags=re.IGNORECASE)
+    
+    # 연속된 공백을 단일 공백으로 정리
+    cleaned_text = re.sub(r'\s+', ' ', cleaned_text)
+    
+    # 앞뒤 공백 제거
+    cleaned_text = cleaned_text.strip()
+    
+    return cleaned_text
+
+
+def clean_analysis_report(report_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    분석 보고서에서 인용 마커를 제거합니다.
+    
+    Args:
+        report_dict (Dict[str, Any]): 분석 보고서 딕셔너리
+        
+    Returns:
+        Dict[str, Any]: 인용 마커가 제거된 분석 보고서
+    """
+    if not isinstance(report_dict, dict):
+        return report_dict
+    
+    cleaned_report: Dict[str, Any] = {}
+    
+    for key, value in report_dict.items():
+        if isinstance(value, str):
+            # 문자열인 경우 인용 마커 제거
+            cleaned_report[key] = remove_citation_markers(value)
+        elif isinstance(value, list):
+            # 리스트인 경우 각 요소에 대해 재귀적으로 처리
+            cleaned_list: List[Any] = []
+            for item in value:
+                if isinstance(item, dict):
+                    cleaned_list.append(clean_analysis_report(item))
+                elif isinstance(item, str):
+                    cleaned_list.append(remove_citation_markers(item))
+                else:
+                    cleaned_list.append(item)
+            cleaned_report[key] = cleaned_list
+        elif isinstance(value, dict):
+            # 딕셔너리인 경우 재귀적으로 처리
+            cleaned_report[key] = clean_analysis_report(value)
+        else:
+            # 기타 타입은 그대로 유지
+            cleaned_report[key] = value
+    
+    return cleaned_report
+
+
+def safe_json_parse(json_str: str, default_value: Any = None) -> Any:
+    """
+    안전한 JSON 파싱 함수 - 삼양KCI 개발 원칙 11번, 12번 적용
+    
+    Args:
+        json_str (str): 파싱할 JSON 문자열
+        default_value (Any): 파싱 실패 시 반환할 기본값
+        
+    Returns:
+        Any: 파싱된 JSON 객체 또는 기본값
+        
+    원칙 적용:
+    - 방어적 코딩: 파싱 실패 시 기본값 반환
+    - JSON 데이터 일관성: 마크다운 코드블록, 불필요한 문자 정제
+    """
+    if not json_str:
+        logger.warning("빈 JSON 문자열 입력")
+        return default_value if default_value is not None else {}
+    
+    try:
+        # 1. 마크다운 코드블록 정제 (원칙 12번)
+        cleaned_json = clean_json_string(json_str)
+        
+        # 2. JSON 파싱 시도
+        parsed_data = json.loads(cleaned_json)
+        
+        logger.debug(f"JSON 파싱 성공: {len(str(parsed_data))} 문자")
+        return parsed_data
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON 파싱 실패: {e}")
+        logger.debug(f"원본 JSON (처음 200자): {json_str[:200]}")
+        
+        # 3. 추가 정제 시도
+        try:
+            # 추가적인 정제 시도
+            extra_cleaned = extra_clean_json_string(json_str)
+            parsed_data = json.loads(extra_cleaned)
+            logger.info("추가 정제 후 JSON 파싱 성공")
+            return parsed_data
+        except Exception as extra_e:
+            logger.error(f"추가 정제 후에도 파싱 실패: {extra_e}")
+    
+    except Exception as e:
+        logger.error(f"JSON 파싱 중 예상치 못한 오류: {e}")
+    
+    # 4. 모든 파싱 시도 실패 시 기본값 반환 (방어적 코딩)
+    logger.warning("JSON 파싱 실패, 기본값 반환")
+    return default_value if default_value is not None else {}
+
+
+def clean_json_string(json_str: str) -> str:
+    """
+    JSON 문자열에서 불필요한 문자들을 정제 - 삼양KCI 개발 원칙 12번 적용
+    
+    Args:
+        json_str (str): 정제할 JSON 문자열
+        
+    Returns:
+        str: 정제된 JSON 문자열
+    """
+    if not json_str:
+        return json_str
+    
+    # 1. 마크다운 코드블록 제거 (```json ... ```)
+    cleaned = re.sub(r'```json\s*', '', json_str, 
+                     flags=re.IGNORECASE)
+    cleaned = re.sub(r'```\s*$', '', cleaned, 
+                     flags=re.MULTILINE)
+    
+    # 2. 기타 마크다운 코드블록 제거 (``` ... ```)
+    cleaned = re.sub(r'```[^`]*```', '', cleaned, 
+                     flags=re.DOTALL)
+    
+    # 3. 불필요한 escape 문자 정제
+    cleaned = cleaned.replace('\\"', '"')
+    cleaned = cleaned.replace('\\n', '\n')
+    cleaned = cleaned.replace('\\r', '\r')
+    cleaned = cleaned.replace('\\t', '\t')
+    
+    # 4. 앞뒤 공백 정리
+    cleaned = cleaned.strip()
+    
+    return cleaned
+
+
+def extra_clean_json_string(json_str: str) -> str:
+    """
+    추가적인 JSON 문자열 정제 - 더 강력한 정제 시도
+    
+    Args:
+        json_str (str): 정제할 JSON 문자열
+        
+    Returns:
+        str: 정제된 JSON 문자열
+    """
+    if not json_str:
+        return json_str
+    
+    # 1. 기본 정제 먼저 수행
+    cleaned = clean_json_string(json_str)
+    
+    # 2. 첫 번째 { 찾기
+    start_idx = cleaned.find('{')
+    if start_idx == -1:
+        return cleaned
+    
+    # 3. 마지막 } 찾기
+    end_idx = cleaned.rfind('}')
+    if end_idx == -1:
+        return cleaned
+    
+    # 4. 중간 부분만 추출
+    json_part = cleaned[start_idx:end_idx+1]
+    
+    # 5. 추가 정제
+    # str(dict) 형태의 잘못된 문자열 정제
+    json_part = re.sub(r"'([^']+)':", r'"\1":', json_part)  
+    json_part = re.sub(r":\s*'([^']*)'", r': "\1"', json_part)  
+    
+    # 6. 불필요한 문자 제거
+    json_part = re.sub(r'[^\x00-\x7F]+', '', json_part)  
+    
+    return json_part
+
+
+def safe_get_nested_value(data: Dict[str, Any], keys: List[str], 
+                         default: Any = None) -> Any:
+    """
+    중첩된 딕셔너리에서 안전하게 값 추출 - 삼양KCI 개발 원칙 11번 적용
+    
+    Args:
+        data (Dict): 대상 딕셔너리
+        keys (List[str]): 접근할 키 목록 
+                         (예: ['level1', 'level2', 'level3'])
+        default (Any): 키가 없을 때 반환할 기본값
+        
+    Returns:
+        Any: 추출된 값 또는 기본값
+        
+    예시:
+        safe_get_nested_value(data, ['candidate_info', 'name'], 
+                             '알 수 없음')
+    """
+    if not isinstance(data, dict):
+        return default
+    
+    current = data
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return default
+    
+    return current

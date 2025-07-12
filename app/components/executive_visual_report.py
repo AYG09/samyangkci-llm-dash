@@ -1,7 +1,7 @@
 """임원 보고용 인터랙티브 비주얼 리포트 컴포넌트"""
 
 import dash_bootstrap_components as dbc
-from dash import html, dcc
+from dash import html
 import plotly.graph_objects as go
 import pandas as pd
 from typing import List, Any
@@ -65,32 +65,41 @@ def create_competency_chart(analysis_items: List[Any]) -> go.Figure:
         'title': item.title
     } for item in analysis_items])
     
+    # 5개 차원만 필터링
+    dimension_names = {
+        'CAPABILITY': '역량',
+        'PERFORMANCE': '성과',
+        'POTENTIAL': '잠재력',
+        'PERSONALITY': '개인특성',
+        'FIT': '적합성'
+    }
+    
+    df = df[df['category'].isin(dimension_names.keys())]
     category_scores = df.groupby('category')['score'].mean().reset_index()
     category_scores = category_scores.sort_values('score', ascending=True)
     
-    # 카테고리 이름 한글화
-    category_names = {
-        'CAREER': '경력/전문성',
-        'COMPETENCY': '핵심역량',
-        'SIMULATION': '직무테스트',
-        'MOTIVATION': '동기/성격',
-        'POTENTIAL': '성장잠재력',
-        'FIT': '조직적합성'
+    # 차원 이름 한글화
+    category_scores['category_kr'] = category_scores['category'].map(dimension_names)
+    
+    # 5개 차원별 고유 색상 매핑
+    dimension_colors = {
+        'CAPABILITY': '#1f77b4',    # 파란색 - 역량
+        'PERFORMANCE': '#ff7f0e',   # 주황색 - 성과
+        'POTENTIAL': '#2ca02c',     # 녹색 - 잠재력
+        'PERSONALITY': '#d62728',   # 빨간색 - 개인특성
+        'FIT': '#9467bd'            # 보라색 - 적합성
     }
     
-    category_scores['category_kr'] = category_scores['category'].map(
-        lambda x: category_names.get(x, x)
-    )
+    # 각 차원별 색상 적용
+    bar_colors = [dimension_colors.get(cat, '#cccccc') for cat in category_scores['category']]
     
     fig = go.Figure(go.Bar(
         x=category_scores['score'],
         y=category_scores['category_kr'],
         orientation='h',
         marker=dict(
-            color=category_scores['score'],
-            colorscale='RdYlGn',
-            cmin=0,
-            cmax=100,
+            color=bar_colors,
+            line=dict(color='rgba(0,0,0,0.1)', width=0.5)
         ),
         text=category_scores['score'].apply(lambda x: f'{x:.1f}'),
         textposition='outside',
@@ -98,9 +107,9 @@ def create_competency_chart(analysis_items: List[Any]) -> go.Figure:
     ))
     
     fig.update_layout(
-        title='6대 역량 그룹별 평균 점수',
+        title='5대 차원별 평균 점수',
         xaxis_title="점수 (100점 만점)",
-        yaxis_title="역량 그룹",
+        yaxis_title="차원",
         xaxis=dict(range=[0, 110]),
         height=200,  # 350에서 200으로 줄임
         margin=dict(l=20, r=20, t=40, b=20),
@@ -125,15 +134,20 @@ def create_competency_detail_table(analysis_items: List[Any]) -> dbc.Table:
         'analysis': item.analysis
     } for item in analysis_items])
     
-    # 카테고리 이름 한글화
-    category_names = {
-        'CAREER': '경력/전문성',
-        'COMPETENCY': '핵심역량',
-        'SIMULATION': '직무테스트',
-        'MOTIVATION': '동기/성격',
-        'POTENTIAL': '성장잠재력',
-        'FIT': '조직적합성'
+    # 5개 차원만 필터링
+    dimension_names = {
+        'CAPABILITY': '역량',
+        'PERFORMANCE': '성과',
+        'POTENTIAL': '잠재력',
+        'PERSONALITY': '개인특성',
+        'FIT': '적합성'
     }
+    
+    # 5개 차원만 필터링
+    df = df[df['category'].isin(dimension_names.keys())]
+    
+    # 카테고리 이름 한글화
+    category_names = dimension_names
     
     df['category_kr'] = df['category'].map(
         lambda x: category_names.get(x, x)
@@ -178,210 +192,139 @@ def create_competency_detail_table(analysis_items: List[Any]) -> dbc.Table:
     ], striped=True, hover=True, size="sm", className="mb-0")
 
 
-def create_key_risks_card(executive_insights: List[Any], hr_points: List[Any]) -> dbc.Card:
-    """주요 리스크 카드를 생성합니다."""
-    # 리스크 관련 항목 추출
-    risk_items = []
-    
-    # Executive insights에서 리스크 관련 항목 찾기
-    for item in executive_insights:
-        if any(keyword in item.title for keyword in ['리스크', '위험', '경영적', '우려']):
-            risk_items.append({
-                'title': item.title,
-                'analysis': item.analysis,
-                'type': 'executive'
-            })
-    
-    # HR points에서 리스크 관련 항목 찾기
-    for item in hr_points:
-        if any(keyword in item.title for keyword in ['리스크', '위험', '법적', '윤리적']):
-            risk_items.append({
-                'title': item.title,
-                'analysis': item.analysis,
-                'type': 'hr'
-            })
-    
-    # 리스크가 없는 경우 일반적인 우려사항 표시
-    if not risk_items and executive_insights:
-        risk_items = [
-            {
-                'title': item.title,
-                'analysis': item.analysis,
-                'type': 'general'
-            } for item in executive_insights[:3]  # 상위 3개 항목
-        ]
-    
-    risk_list_items = []
-    for item in risk_items:
-        icon_class = {
-            'executive': 'bi bi-exclamation-triangle text-warning',
-            'hr': 'bi bi-shield-exclamation text-danger',
-            'general': 'bi bi-info-circle text-primary'
-        }.get(item['type'], 'bi bi-info-circle text-primary')
-        
-        risk_list_items.append(
-            dbc.ListGroupItem([
-                html.Div([
-                    html.I(className=f"{icon_class} me-2"),
-                    html.Strong(item['title'])
-                ], className="mb-2"),
-                html.P(item['analysis'], className="mb-0 text-muted small")
-            ])
+def create_strengths_card(decision_points: Any) -> dbc.Card:
+    """주요 강점 카드를 생성합니다."""
+    if not hasattr(decision_points, 'strengths') or not decision_points.strengths:
+        return dbc.Card(
+            dbc.CardBody("분석된 강점이 없습니다."),
+            className="mb-4"
         )
     
-    if not risk_list_items:
-        risk_list_items = [
-            dbc.ListGroupItem(
-                "특별한 위험 요인이 식별되지 않았습니다.",
-                color="success"
-            )
-        ]
-    
+    strength_items = []
+    for item in decision_points.strengths:
+        strength_items.append(
+            dbc.ListGroupItem([
+                html.Div([
+                    html.I(className="bi bi-graph-up-arrow me-2 text-primary"),
+                    html.Strong(getattr(item, 'title', '강점'))
+                ], className="mb-2"),
+                html.P(getattr(item, 'analysis', ''), className="mb-0 text-muted small")
+            ])
+        )
+        
+    return dbc.Card([
+        dbc.CardHeader([
+            html.I(className="bi bi-trophy me-2"),
+            "Key Strengths"
+        ]),
+        dbc.ListGroup(strength_items, flush=True)
+    ], className="mb-4")
+
+
+def create_key_risks_card(decision_points: Any) -> dbc.Card:
+    """주요 리스크 카드를 생성합니다."""
+    if not hasattr(decision_points, 'risks') or not decision_points.risks:
+        return dbc.Card(
+            dbc.CardBody([
+                html.I(className="bi bi-check-circle-fill me-2 text-success"),
+                "특별한 위험 요인이 식별되지 않았습니다."
+            ]),
+            className="mb-4"
+        )
+
+    risk_items = []
+    for item in decision_points.risks:
+        risk_items.append(
+            dbc.ListGroupItem([
+                html.Div([
+                    html.I(className="bi bi-exclamation-triangle me-2 text-danger"),
+                    html.Strong(getattr(item, 'title', '리스크'))
+                ], className="mb-2"),
+                html.P(getattr(item, 'analysis', ''), className="mb-0 text-muted small")
+            ])
+        )
+        
     return dbc.Card([
         dbc.CardHeader([
             html.I(className="bi bi-shield-exclamation me-2"),
-            "주요 위험 요인 (Key Risk Factors)"
+            "Key Risk Factors"
         ]),
-        dbc.ListGroup(risk_list_items, flush=True)
-    ], className="h-100")
-
-
-def create_insights_accordion_content(executive_insights: List[Any], hr_points: List[Any]) -> dbc.ListGroup:
-    """핵심 의사결정 포인트 아코디언 내용을 생성합니다."""
-    items = []
-    
-    # Executive insights 추가
-    for item in executive_insights:
-        items.append(
-            dbc.ListGroupItem([
-                html.Div([
-                    html.I(className="bi bi-lightbulb text-warning me-2"),
-                    html.Strong(item.title)
-                ], className="mb-2"),
-                html.P(item.analysis, className="mb-1 text-muted"),
-                html.Small(f"근거: {item.evidence}", className="text-secondary")
-            ])
-        )
-    
-    # HR points 추가
-    for item in hr_points:
-        items.append(
-            dbc.ListGroupItem([
-                html.Div([
-                    html.I(className="bi bi-people text-info me-2"),
-                    html.Strong(item.title)
-                ], className="mb-2"),
-                html.P(item.analysis, className="mb-1 text-muted"),
-                html.Small(f"근거: {item.evidence}", className="text-secondary")
-            ])
-        )
-    
-    return dbc.ListGroup(items, flush=True)
+        dbc.ListGroup(risk_items, flush=True)
+    ], className="mb-4")
 
 
 def create_material_analysis_accordion_content(material_analysis: List[Any]) -> dbc.ListGroup:
-    """자료별 분석 요약 아코디언 내용을 생성합니다."""
-    items = []
+    """자료별 분석 요약 ListGroup을 생성합니다."""
+    if not material_analysis:
+        return dbc.ListGroup(
+            dbc.ListGroupItem("분석된 자료가 없습니다.")
+        )
     
+    accordion_items = []
     for item in material_analysis:
-        items.append(
+        accordion_items.append(
             dbc.ListGroupItem([
-                html.Div([
-                    html.I(className="bi bi-file-earmark-text me-2"),
-                    html.Strong(item.material_name)
-                ], className="mb-2"),
-                html.Blockquote(
-                    item.summary,
-                    className="mb-2 text-muted small border-start border-3 ps-3"
-                ),
+                html.H6(item.material_name, className="mb-2 text-primary"),
                 html.P([
-                    html.Strong("분석 포인트: "),
+                    html.Strong("요약: "),
+                    item.summary
+                ], className="mb-1 small"),
+                html.P([
+                    html.Strong("주요 포인트: "),
                     item.analysis_points
-                ], className="small mb-0")
+                ], className="mb-0 small text-muted")
             ])
         )
     
-    return dbc.ListGroup(items, flush=True)
+    return dbc.ListGroup(accordion_items, flush=True)
 
 
 def render_executive_visual_report(report_data: ReportData) -> html.Div:
-    """임원용 비주얼 리포트를 렌더링합니다."""
+    """임원 보고용 비주얼 리포트를 렌더링합니다."""
     return html.Div([
         # 헤더
         dbc.Row([
-            dbc.Col([
+            dbc.Col(
                 html.Div([
-                    html.H2([
-                        html.I(className="bi bi-graph-up-arrow me-2"),
-                        "Executive Visual Report"
-                    ], className="text-white mb-1"),
-                    html.P("AI 기반 후보자 종합 분석 보고서", className="text-white-50 mb-0")
-                ], className="p-4")
-            ], width=12, style={'backgroundColor': '#1A237E'})
+                    html.H3("Executive Visual Report", className="text-white"),
+                    html.P("핵심 요약 및 의사결정 지원을 위한 보고서", className="text-white-50")
+                ], className="p-4 rounded", style={'backgroundColor': '#003366'}),
+                width=12
+            )
         ], className="mb-4"),
-        
-        # 최종 결론 카드
+
+        # 최종 결론
+        create_executive_summary_card(report_data),
+
+        # 강점 및 리스크
         dbc.Row([
-            dbc.Col([
-                create_executive_summary_card(report_data)
-            ], width=12)
+            dbc.Col(
+                create_strengths_card(report_data.decision_points), 
+                width=12, 
+                lg=6
+            ),
+            dbc.Col(
+                create_key_risks_card(report_data.decision_points), 
+                width=12, 
+                lg=6
+            )
         ]),
+
+        # 상세 분석
+        dbc.Card([
+            dbc.CardHeader("상세 분석 (Drill-down)"),
+            dbc.CardBody([
+                dbc.Accordion([
+                    dbc.AccordionItem(
+                        create_competency_detail_table(report_data.analysis_items),
+                        title="1. 5대 차원별 상세 점수"
+                    ),
+                    dbc.AccordionItem(
+                        create_material_analysis_accordion_content(report_data.material_analysis),
+                        title="2. 검토 자료별 분석 요약"
+                    )
+                ], start_collapsed=True, always_open=True)
+            ])
+        ], className="mb-4")
         
-        # 역량 요약 및 주요 리스크
-        dbc.Row([
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.I(className="bi bi-bar-chart me-2"),
-                        html.H5("역량 프로필 및 주요 리스크 요약", className="m-0 d-inline")
-                    ]),
-                    dbc.CardBody([
-                        dbc.Row([
-                            dbc.Col([
-                                dcc.Graph(
-                                    id="exec-visual-competency-chart",
-                                    figure=create_competency_chart(report_data.analysis_items),
-                                    config={'displayModeBar': False}
-                                )
-                            ], width=12, md=7),
-                            dbc.Col([
-                                create_key_risks_card(
-                                    report_data.executive_insights,
-                                    report_data.hr_points
-                                )
-                            ], width=12, md=5)
-                        ]),
-                        # 세부 역량별 점수 테이블 추가
-                        html.Hr(className="my-4"),
-                        html.H6("세부 역량별 점수", className="mb-3"),
-                        create_competency_detail_table(report_data.analysis_items)
-                    ])
-                ], className="mb-4 shadow-sm")
-            ], width=12)
-        ]),
-        
-        # 상세 분석 아코디언
-        dbc.Row([
-            dbc.Col([
-                html.Div([
-                    html.H4([
-                        html.I(className="bi bi-zoom-in me-2"),
-                        "상세 분석 (Drill-down)"
-                    ], className="mb-3"),
-                    dbc.Accordion([
-                        dbc.AccordionItem([
-                            create_insights_accordion_content(
-                                report_data.executive_insights,
-                                report_data.hr_points
-                            )
-                        ], title="💡 핵심 의사결정 포인트 (Executive & HR Insights)"),
-                        dbc.AccordionItem([
-                            create_material_analysis_accordion_content(
-                                report_data.material_analysis
-                            )
-                        ], title="📄 검토 자료별 분석 요약 (Material Analysis)")
-                    ], start_collapsed=True, always_open=False)
-                ])
-            ], width=12)
-        ])
-    ], className="executive-visual-report", id="exec-visual-report-container") 
+    ], className="executive-visual-report-container p-3") 
