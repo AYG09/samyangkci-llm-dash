@@ -32,6 +32,7 @@ app = dash.Dash(
     ],
     suppress_callback_exceptions=True,
 )
+server = app.server
 
 # -------------------- 레이아웃 정의 --------------------
 app.layout = dbc.Container(
